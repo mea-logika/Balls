@@ -1,0 +1,183 @@
+#include "TXLib.h"
+#include <cmath>
+
+const int RED = 1;
+const int WHITE = -1;
+const int N = 10;
+
+struct TBall
+{
+    double x_, y_;
+    int r_;
+    double dx_, dy_;
+    double ax_, ay_;
+
+    COLORREF col_;
+    bool visible_;
+    int master_;
+
+    void DrawBall (COLORREF color);
+    void Moving ( int w, int h);
+
+};
+
+
+
+void MoveBall (TBall ball[], TBall PlayRed, TBall PlayWhite, int w, int h);
+int random (int down, int up);
+
+double Dist (TBall s1, TBall s2);
+bool Collision (TBall s1, TBall s2);
+bool KeyPress (char str[]);
+void Capture(TBall strong, TBall* weakly);
+
+//----------------------------------------------------------------------------------
+int main()
+    {
+    txCreateWindow (800, 600);
+    TBall ball[N], PlayRed, PlayWhite;
+    for (int i=0; i<N; i++)
+        {
+        ball[i].x_ = random (0, txGetExtentX());
+        ball[i].y_ = random (0, txGetExtentY());
+        ball[i].dx_ = random (-10, 10);
+        ball[i].dy_ = random (-10, 10);
+        ball[i].ax_ = 0;
+        ball[i].ay_ = 0;
+        ball[i].r_ = random (10, 20);
+        ball[i].master_ = 0;
+        ball[i].col_ = RGB (random(0, 255), random(0, 255), random(0, 255));
+        ball[i].visible_ = true;
+        }
+               //                x_  y_   r_  dx_ dy_ ax_ ay_       col_;        visible_;  master_;
+    PlayRed =   {                20, 50, 20,  0,  0,  0.1,  0.1,  RGB(255, 0, 0),     true,     RED};
+    PlayWhite = { txGetExtentX()-20, 50, 20,  0,  0,  0.1,  0.1,  RGB(255, 255, 255), true,   WHITE};
+
+    MoveBall(ball, PlayRed, PlayWhite, txGetExtentX(), txGetExtentY());
+
+    }
+
+void MoveBall(TBall ball[], TBall PlayRed, TBall PlayWhite, int w, int h)
+    {
+
+
+    while (!txGetAsyncKeyState (VK_ESCAPE))
+        {
+        for (int i=0; i<N; i++)
+            {
+            ball[i].DrawBall (TX_BLACK);
+            ball[i].Moving ( w, h);
+            }
+
+        PlayRed.DrawBall (TX_BLACK);
+        PlayWhite.DrawBall (TX_BLACK);
+        PlayRed.Moving ( w, h);
+        PlayWhite.Moving ( w, h);
+
+        for (int i=0; i<N; i++)
+            {
+            ball[i].DrawBall(ball[i].col_);
+            if (Collision(ball[i], PlayRed))   Capture(PlayRed, &ball[i]);
+            if (Collision(ball[i], PlayWhite)) Capture(PlayWhite, &ball[i]);
+
+            }
+        PlayRed.DrawBall (PlayRed.col_);
+        PlayWhite.DrawBall (PlayWhite.col_);
+
+        txSleep(100);
+
+        }
+    }
+
+COLORREF Darks(COLORREF Col, double dCol)
+    {
+    int red = txExtractColor (Col, TX_RED);
+    int green = txExtractColor (Col, TX_GREEN);
+    int blue = txExtractColor (Col, TX_BLUE);
+    return RGB(red*dCol, green*dCol, blue*dCol);
+
+    }
+void TBall::DrawBall (COLORREF color)
+    {
+    if (!visible_) color = TX_BLACK;
+    txSetFillColor(color);
+    txSetColor(color);
+    txCircle (x_, y_, r_);
+    }
+
+void TBall::Moving ( int w, int h)
+    {
+    x_ += dx_;
+    y_ += dy_;
+    if (x_ > w -r_)
+            {
+            x_ -= 2*(x_-w+r_);
+            dx_ *= -1;
+            }
+        if (x_<r_)
+            {
+            x_ += 2*(r_-x_);
+            dx_ *= -1;
+            }
+
+        if (y_ > h-r_)
+            {
+            y_ -= 2*(y_-h+r_);
+            dy_ *= -1;
+            }
+        if (y_<r_)
+            {
+            y_ += 2*(r_-y_);
+            dy_ *= -1;
+            }
+
+        if (txGetAsyncKeyState (VK_LEFT)  && (master_ == WHITE )) dx_ -= ax_;
+        if (txGetAsyncKeyState (VK_RIGHT) && (master_ == WHITE )) dx_ += ax_;
+        if (txGetAsyncKeyState (VK_UP)    && (master_ == WHITE )) dy_ -= ay_;
+        if (txGetAsyncKeyState (VK_DOWN)  && (master_ == WHITE )) dy_ += ay_;
+
+        if (KeyPress ("Aa��") && (master_ == RED)) dx_ -= ax_;
+        if (KeyPress ("Ss��") && (master_ == RED)) dx_ += ax_;
+        if (KeyPress ("Ww��") && (master_ == RED)) dy_ -= ay_;
+        if (KeyPress ("Zz��") && (master_ == RED)) dy_ += ay_;
+
+    }
+
+double Dist (TBall s1, TBall s2)
+    {
+    double rx =s1.x_-s2.x_;
+    double ry =s1.y_-s2.y_;
+    double r = rx*rx + ry*ry;
+    return r;
+    }
+
+int random (int down, int up)
+    {
+    int r;
+    r = rand() % (up-down+1)+down;
+    return r;
+    }
+
+bool KeyPress (char str[])
+    {
+    int len = strlen(str);
+    bool isKey = false;
+    for (int i=0; i< len; i++)
+        isKey = isKey || txGetAsyncKeyState(str[i]);
+    return isKey;
+    }
+
+bool Collision (TBall s1, TBall s2)
+    {
+    bool isColl = ((s1.r_+s2.r_)*(s1.r_+s2.r_) >= Dist (s1, s2));
+    return isColl;
+    }
+void Capture(TBall strong, TBall* weakly)
+    {
+     weakly->col_ = strong.col_;
+     weakly->ax_  = strong.ax_;
+     weakly->ay_  = strong.ay_;
+     weakly->master_ = strong.master_;
+    }
+
+
